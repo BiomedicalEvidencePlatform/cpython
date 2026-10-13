@@ -290,16 +290,26 @@ class MLXBackend(Backend):
                                                               stream)])
         data = handle.data
         if data.dtype != dtype:
-            data = data.astype(dtype, stream=mx.cpu)
+            narrowed = data.astype(dtype, stream=mx.cpu)
+            if (dtype == mx.float32 and data.dtype == mx.float64 and
+                    mx.sum(mx.isinf(narrowed, stream=mx.cpu), stream=mx.cpu).item() !=
+                    mx.sum(mx.isinf(data, stream=mx.cpu), stream=mx.cpu).item()):
+                raise OverflowError('value too large for float32, the '
+                                    'largest float type of the Metal GPU; '
+                                    "use the 'mlx:cpu' device")
+            data = narrowed
         return _MLXHandle(data, stream)
 
     def length(self, handle):
         return handle.data.size
 
     def getitem(self, handle, key):
-        if isinstance(key, slice):
-            return _MLXHandle(handle.data[key], handle.stream)
-        return handle.data[key].item()
+        # MLX's default stream is the GPU when Metal is available, so every
+        # operation is pinned to the handle's stream explicitly.
+        with self.mx.stream(self._device(handle.stream)):
+            if isinstance(key, slice):
+                return _MLXHandle(handle.data[key], handle.stream)
+            return handle.data[key].item()
 
     def _reduce(self, name, handle):
         mx = self.mx
@@ -362,7 +372,7 @@ class MLXBackend(Backend):
                 if isinstance(v, (int, float)):
                     v = mx.array(v, dtype=ftype)
                 elif not mx.issubdtype(v.dtype, mx.floating):
-                    v = v.astype(ftype)
+                    v = v.astype(ftype, stream=self._device(stream))
             result.append(v)
         return result
 

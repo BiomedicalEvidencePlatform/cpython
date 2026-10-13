@@ -388,6 +388,19 @@ class ModuleBackendTests(unittest.TestCase):
         with self.assertRaises(statistics.StatisticsError):
             statistics.geometric_mean([1.0, -1.0])
 
+    def test_backend_errors_are_not_hidden(self):
+        # Only "not representable" errors fall back to the CPU; anything
+        # else is a backend bug and must propagate.
+        class BrokenBackend(FakeBackend):
+            name = 'broken'
+            def from_host(self, buf, stream):
+                raise ValueError('backend bug')
+        accel.register_backend(BrokenBackend())
+        self.addCleanup(_backends._registry.pop, 'broken')
+        accel.set_backend(statistics, 'broken', min_size=0)
+        with self.assertRaisesRegex(ValueError, 'backend bug'):
+            statistics.fmean([1.0, 2.0])
+
     def test_iterators_are_not_lost(self):
         accel.set_backend(statistics, 'fake', min_size=0)
         self.assertEqual(statistics.mean(iter([1, 2, 3])), 2)
@@ -497,8 +510,13 @@ class MLXTests(unittest.TestCase):
         back = x.to_device('mlx:cpu')
         self.assertEqual(back.storage_typecode, 'd')
         self.assertAlmostEqual(back[0], 0.1, places=6)
+        # Finite float64 values beyond the float32 range are not silently
+        # turned into inf.
+        with self.assertRaises(OverflowError):
+            accel.to_device([1e300], 'mlx:gpu')
         with self.assertRaises(OverflowError):
             accel.map(math.exp, [100.0], device='mlx:gpu')
+        self.assertEqual(accel.to_device([math.inf], 'mlx:gpu')[0], math.inf)
 
     def test_exact_fallbacks(self):
         for dev in self.devices():
