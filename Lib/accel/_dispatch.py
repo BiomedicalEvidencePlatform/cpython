@@ -161,7 +161,9 @@ def as_device(data, device, min_size):
         return None
     try:
         return to_device(data, device)
-    except (TypeError, ValueError, OverflowError):
+    except (TypeError, OverflowError):
+        # Not representable on the device; other errors are bugs and
+        # must not be hidden by a silent fallback.
         return None
 
 
