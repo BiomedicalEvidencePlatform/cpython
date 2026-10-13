@@ -107,6 +107,7 @@ static const char* _Py_stdlib_module_names[] = {
 "_zoneinfo",
 "_zstd",
 "abc",
+"accel",
 "annotationlib",
 "antigravity",
 "argparse",

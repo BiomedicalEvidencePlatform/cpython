@@ -283,6 +283,15 @@ The module defines the following type:
       Write all items (as machine values) to the :term:`file object` *f*.
 
 
+   .. method:: to_device(device=None, /, *, typecode=None)
+
+      Return a copy of the array on a compute device, as an
+      :class:`accel.DeviceArray`.  This is a shortcut for
+      ``accel.to_device(array, device, typecode=typecode)``; see
+      :func:`accel.to_device`.  Only numeric typecodes are supported.
+
+      .. versionadded:: next
+
    .. method:: tolist()
 
       Convert the array to an ordinary list with the same items.

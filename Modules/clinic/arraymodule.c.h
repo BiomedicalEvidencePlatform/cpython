@@ -3,6 +3,7 @@ preserve
 [clinic start generated code]*/
 
 #if defined(Py_BUILD_CORE) && !defined(Py_BUILD_CORE_MODULE)
+#  include "pycore_gc.h"          // PyGC_Head
 #  include "pycore_runtime.h"     // _Py_SINGLETON()
 #endif
 #include "pycore_abstract.h"      // _PyNumber_Index()
@@ -498,6 +499,80 @@ array_array_fromlist(PyObject *self, PyObject *list)
     return return_value;
 }
 
+PyDoc_STRVAR(array_array_to_device__doc__,
+"to_device($self, device=None, /, *, typecode=None)\n"
+"--\n"
+"\n"
+"Return a copy of the array on a compute device, such as \'mlx\'.\n"
+"\n"
+"Shortcut for accel.to_device(array, device, typecode=typecode).\n"
+"Returns an accel.DeviceArray.");
+
+#define ARRAY_ARRAY_TO_DEVICE_METHODDEF    \
+    {"to_device", _PyCFunction_CAST(array_array_to_device), METH_FASTCALL|METH_KEYWORDS, array_array_to_device__doc__},
+
+static PyObject *
+array_array_to_device_impl(arrayobject *self, PyObject *device,
+                           PyObject *typecode);
+
+static PyObject *
+array_array_to_device(PyObject *self, PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames)
+{
+    PyObject *return_value = NULL;
+    #if defined(Py_BUILD_CORE) && !defined(Py_BUILD_CORE_MODULE)
+
+    #define NUM_KEYWORDS 1
+    static struct {
+        PyGC_Head _this_is_not_used;
+        PyObject_VAR_HEAD
+        Py_hash_t ob_hash;
+        PyObject *ob_item[NUM_KEYWORDS];
+    } _kwtuple = {
+        .ob_base = PyVarObject_HEAD_INIT(&PyTuple_Type, NUM_KEYWORDS)
+        .ob_hash = -1,
+        .ob_item = { &_Py_ID(typecode), },
+    };
+    #undef NUM_KEYWORDS
+    #define KWTUPLE (&_kwtuple.ob_base.ob_base)
+
+    #else  // !Py_BUILD_CORE
+    #  define KWTUPLE NULL
+    #endif  // !Py_BUILD_CORE
+
+    static const char * const _keywords[] = {"", "typecode", NULL};
+    static _PyArg_Parser _parser = {
+        .keywords = _keywords,
+        .fname = "to_device",
+        .kwtuple = KWTUPLE,
+    };
+    #undef KWTUPLE
+    PyObject *argsbuf[2];
+    Py_ssize_t noptargs = nargs + (kwnames ? PyTuple_GET_SIZE(kwnames) : 0) - 0;
+    PyObject *device = Py_None;
+    PyObject *typecode = Py_None;
+
+    args = _PyArg_UnpackKeywords(args, nargs, NULL, kwnames, &_parser,
+            /*minpos*/ 0, /*maxpos*/ 1, /*minkw*/ 0, /*varpos*/ 0, argsbuf);
+    if (!args) {
+        goto exit;
+    }
+    if (nargs < 1) {
+        goto skip_optional_posonly;
+    }
+    noptargs--;
+    device = args[0];
+skip_optional_posonly:
+    if (!noptargs) {
+        goto skip_optional_kwonly;
+    }
+    typecode = args[1];
+skip_optional_kwonly:
+    return_value = array_array_to_device_impl((arrayobject *)self, device, typecode);
+
+exit:
+    return return_value;
+}
+
 PyDoc_STRVAR(array_array_tolist__doc__,
 "tolist($self, /)\n"
 "--\n"
@@ -781,4 +856,4 @@ array_arrayiterator___setstate__(PyObject *self, PyObject *state)
 
     return return_value;
 }
-/*[clinic end generated code: output=32784678e77ac658 input=a9049054013a1b77]*/
+/*[clinic end generated code: output=693550fd7e923875 input=a9049054013a1b77]*/
