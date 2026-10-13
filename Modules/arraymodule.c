@@ -1848,6 +1848,42 @@ array_array_fromlist_impl(arrayobject *self, PyObject *list)
 }
 
 /*[clinic input]
+array.array.to_device
+
+    device: object = None
+    /
+    *
+    typecode: object = None
+
+Return a copy of the array on a compute device, such as 'mlx'.
+
+Shortcut for accel.to_device(array, device, typecode=typecode).
+Returns an accel.DeviceArray.
+[clinic start generated code]*/
+
+static PyObject *
+array_array_to_device_impl(arrayobject *self, PyObject *device,
+                           PyObject *typecode)
+/*[clinic end generated code: output=4c3b3a06cc48e620 input=68c21caeac5dd5f7]*/
+{
+    PyObject *to_device = PyImport_ImportModuleAttrString("accel",
+                                                          "to_device");
+    if (to_device == NULL) {
+        return NULL;
+    }
+    PyObject *kwnames = Py_BuildValue("(s)", "typecode");
+    if (kwnames == NULL) {
+        Py_DECREF(to_device);
+        return NULL;
+    }
+    PyObject *args[3] = {(PyObject *)self, device, typecode};
+    PyObject *result = PyObject_Vectorcall(to_device, args, 2, kwnames);
+    Py_DECREF(kwnames);
+    Py_DECREF(to_device);
+    return result;
+}
+
+/*[clinic input]
 array.array.tolist
 
 Convert array to an ordinary list with the same items.
@@ -2623,6 +2659,7 @@ static PyMethodDef array_methods[] = {
     ARRAY_ARRAY_REMOVE_METHODDEF
     ARRAY_ARRAY_REVERSE_METHODDEF
     ARRAY_ARRAY_TOFILE_METHODDEF
+    ARRAY_ARRAY_TO_DEVICE_METHODDEF
     ARRAY_ARRAY_TOLIST_METHODDEF
     ARRAY_ARRAY_TOBYTES_METHODDEF
     ARRAY_ARRAY_TOUNICODE_METHODDEF

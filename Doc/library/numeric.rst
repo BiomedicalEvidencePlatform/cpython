@@ -25,3 +25,4 @@ The following modules are documented in this chapter:
    fractions.rst
    random.rst
    statistics.rst
+   accel.rst
