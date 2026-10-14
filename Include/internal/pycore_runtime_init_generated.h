@@ -2163,6 +2163,7 @@ extern "C" {
     INIT_ID(txt), \
     INIT_ID(type), \
     INIT_ID(type_params), \
+    INIT_ID(typecode), \
     INIT_ID(tz), \
     INIT_ID(tzinfo), \
     INIT_ID(tzname), \

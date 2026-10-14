@@ -840,6 +840,7 @@ _PyUnicode_InitStaticStrings(PyInterpreterState *interp) {
         offsetof(struct _Py_global_strings, identifiers._py_txt._ascii.ob_base),
         offsetof(struct _Py_global_strings, identifiers._py_type._ascii.ob_base),
         offsetof(struct _Py_global_strings, identifiers._py_type_params._ascii.ob_base),
+        offsetof(struct _Py_global_strings, identifiers._py_typecode._ascii.ob_base),
         offsetof(struct _Py_global_strings, identifiers._py_tz._ascii.ob_base),
         offsetof(struct _Py_global_strings, identifiers._py_tzinfo._ascii.ob_base),
         offsetof(struct _Py_global_strings, identifiers._py_tzname._ascii.ob_base),

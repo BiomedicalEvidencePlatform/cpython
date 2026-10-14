@@ -876,6 +876,7 @@ _PyStaticObjects_CheckAll(PyInterpreterState *interp) {
     _PyStaticObject_CheckUnicodeSingleton((PyObject *)&_Py_ID(txt), "txt", 3);
     _PyStaticObject_CheckUnicodeSingleton((PyObject *)&_Py_ID(type), "type", 4);
     _PyStaticObject_CheckUnicodeSingleton((PyObject *)&_Py_ID(type_params), "type_params", 11);
+    _PyStaticObject_CheckUnicodeSingleton((PyObject *)&_Py_ID(typecode), "typecode", 8);
     _PyStaticObject_CheckUnicodeSingleton((PyObject *)&_Py_ID(tz), "tz", 2);
     _PyStaticObject_CheckUnicodeSingleton((PyObject *)&_Py_ID(tzinfo), "tzinfo", 6);
     _PyStaticObject_CheckUnicodeSingleton((PyObject *)&_Py_ID(tzname), "tzname", 6);

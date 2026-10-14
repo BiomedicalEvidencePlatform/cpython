@@ -888,6 +888,7 @@ struct _Py_global_strings {
         STRUCT_FOR_ID(txt)
         STRUCT_FOR_ID(type)
         STRUCT_FOR_ID(type_params)
+        STRUCT_FOR_ID(typecode)
         STRUCT_FOR_ID(tz)
         STRUCT_FOR_ID(tzinfo)
         STRUCT_FOR_ID(tzname)
