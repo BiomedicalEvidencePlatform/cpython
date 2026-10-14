@@ -1,0 +1,141 @@
+name: macOS distribution
+
+# Build an optimized CPython for Apple silicon that can be used as a drop-in
+# python3: the install prefix is fixed, so unpack the tarball at the root
+# of the filesystem (see the release notes written below).
+#
+# - workflow_dispatch: build and upload the tarball as a workflow artifact.
+# - push of a tag 'accel-v*': also attach it to a GitHub release.
+# - pull requests changing this file: quick unoptimized build to test it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      optimize:
+        description: Build with PGO and LTO (slower build, faster Python)
+        type: boolean
+        default: true
+  push:
+    tags:
+    - 'accel-v*'
+  pull_request:
+    paths:
+    - .github/workflows/macos-dist.yml
+
+permissions:
+  contents: read
+
+env:
+  FORCE_COLOR: 1
+  PREFIX: /opt/python-accel
+
+jobs:
+  build:
+    name: build (macos-26, arm64)
+    # Apple silicon only: MLX and Metal do not support Intel Macs.
+    runs-on: macos-26
+    timeout-minutes: 120
+    outputs:
+      name: ${{ steps.package.outputs.name }}
+      version: ${{ steps.package.outputs.version }}
+      brew-deps: ${{ steps.package.outputs.brew-deps }}
+    env:
+      HOMEBREW_NO_ANALYTICS: 1
+      HOMEBREW_NO_AUTO_UPDATE: 1
+      HOMEBREW_NO_INSTALL_CLEANUP: 1
+      HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
+      OPTIMIZE: ${{ github.event_name == 'push' || inputs.optimize }}
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - name: Install Homebrew dependencies
+      run: |
+        brew bundle --file=Misc/Brewfile
+        brew install make
+    - name: Configure CPython
+      run: |
+        GDBM_CFLAGS="-I$(brew --prefix gdbm)/include" \
+        GDBM_LIBS="-L$(brew --prefix gdbm)/lib -lgdbm" \
+        ./configure \
+          ${{ env.OPTIMIZE == 'true' && '--enable-optimizations --with-lto' || '' }} \
+          --prefix="$PREFIX" \
+          --with-openssl="$(brew --prefix openssl@3.5)"
+    - name: Build CPython
+      run: gmake -j8
+    - name: Install CPython
+      run: sudo gmake install
+    - name: Check the installed Python
+      run: |
+        PY="$PREFIX/bin/python3"
+        "$PY" -VV
+        # Optional modules a drop-in replacement must have.
+        "$PY" -c 'import ssl, sqlite3, lzma, bz2, zlib, ctypes, decimal, readline, dbm.gnu, compression.zstd, _tkinter, accel; print(ssl.OPENSSL_VERSION)'
+        "$PY" -m pip --version
+        "$PY" -m test test_accel test_array test_statistics test_ssl test_venv
+    - name: Package
+      id: package
+      run: |
+        VERSION="$("$PREFIX/bin/python3" -c 'import sys; print(sys.version.split()[0])')"
+        NAME="python-accel-${VERSION}-${GITHUB_SHA::10}-macos-arm64"
+        # Paths are relative to /, so that 'tar -xzf ... -C /' restores
+        # the prefix the interpreter was built for.
+        tar -czf "$NAME.tar.gz" -C / "${PREFIX#/}"
+        shasum -a 256 "$NAME.tar.gz" | tee "$NAME.tar.gz.sha256"
+        # Homebrew libraries the build links to; users need them installed.
+        BREW_DEPS="$(find "$PREFIX" -type f \( -name '*.so' -o -name 'python3.*' \) \
+          | xargs otool -L 2>/dev/null | grep -o '/opt/homebrew/opt/[^/]*' \
+          | sort -u | sed 's|/opt/homebrew/opt/||' | tr '\n' ' ')"
+        echo "Homebrew runtime dependencies: $BREW_DEPS"
+        {
+          echo "name=$NAME"
+          echo "version=$VERSION"
+          echo "brew-deps=$BREW_DEPS"
+        } >> "$GITHUB_OUTPUT"
+    - name: Upload artifact
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ steps.package.outputs.name }}
+        path: ${{ steps.package.outputs.name }}.tar.gz*
+        if-no-files-found: error
+
+  release:
+    name: release
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      with:
+        path: dist
+        merge-multiple: true
+    - name: Create release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        NAME: ${{ needs.build.outputs.name }}
+        VERSION: ${{ needs.build.outputs.version }}
+        BREW_DEPS: ${{ needs.build.outputs.brew-deps }}
+      run: |
+        cat > notes.md <<EOF
+        CPython ${VERSION} with the \`accel\` package, built from ${GITHUB_SHA} for macOS on Apple silicon.
+
+        ## Install
+
+        \`\`\`sh
+        brew install ${BREW_DEPS}
+        sudo tar -xzf ${NAME}.tar.gz -C /
+        export PATH="${PREFIX}/bin:\$PATH"   # add to ~/.zshrc to make it the default python3
+        python3 -VV
+        \`\`\`
+
+        The interpreter lives in \`${PREFIX}\` and must stay there. Create
+        virtual environments with \`python3 -m venv\` as usual. For the GPU
+        backend, install MLX (no wheels exist for this Python version yet,
+        build it from source: https://ml-explore.github.io/mlx/build/html/install.html#build-from-source).
+        EOF
+        gh release create "$GITHUB_REF_NAME" dist/* \
+          --repo "$GITHUB_REPOSITORY" \
+          --title "Python ${VERSION} (accel) ${GITHUB_REF_NAME}" \
+          --notes-file notes.md
